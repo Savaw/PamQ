@@ -8,7 +8,29 @@ import (
 	"fmt"
 	"errors"
 	"regexp"
+	"database/sql"
+	_ "github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
 )
+
+var db *sql.DB
+
+const (
+	DB_USER = "postgres"
+	DB_NAME = "go_db_test"
+)
+
+func GetDB() *sql.DB {
+	dbinfo := fmt.Sprintf("user=%s dbname=%s sslmode=disable", DB_USER, DB_NAME)
+
+	var err error
+	db, err := sql.Open("postgres", dbinfo)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return db
+}
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
@@ -17,9 +39,9 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type User struct {	
-	Username	string	
-	Email		string
-	Password 	string	
+	Username		string	`db:"username"`
+	Email			string	`db:"email"`
+	HashedPassword 	string	`db:"password"`
 }
 
 type NewUser struct {
@@ -49,18 +71,27 @@ func (u *NewUser) Validate() error {
 		return ErrorMissingField("Password")
 	}
 	if u.Password != u.PasswordConfirm {
-		return errors.New("Password doesn't match.")
+		return errors.New("Passwords don't match.")
 	}
 	return nil		
 }
 
 func (u * NewUser) CreateUser() (*User, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("SomeSaltHereMaybeThere" + u.Password), 8)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Error %s", err))
+	}
+	
 	user := &User{
 		Username: u.Username,
 		Email: u.Email,
-		Password: ("SomeSaltHereMaybeThere" + u.Password)}
+		HashedPassword: string(hashedPassword)}
 
-	//todo add to db
+	db := GetDB()
+	if _, err := db.Query("INSERT INTO userinfo VALUES ($1,$2,$3)", user.Username, user.Email, user.HashedPassword); err != nil {
+		log.Println(err)
+		return nil, errors.New(fmt.Sprintf("User not created. (%s)", err))
+	}
 
 	return user, nil
 }
@@ -107,6 +138,7 @@ func signupPostHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if user, err = newUser.CreateUser(); err != nil {
 		returnErrorAsJson(w, fmt.Sprintf("%s",err))
+		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
