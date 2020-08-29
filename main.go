@@ -117,7 +117,6 @@ func returnMessageAsJson(w http.ResponseWriter, msg string) {
 
 func signupPostHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	// var user User 
 	var newUser NewUser
 
 	decoder := json.NewDecoder(r.Body)
@@ -146,12 +145,46 @@ func signupPostHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func loginPostHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	decoder := json.NewDecoder(r.Body)
+	var userCred NewUser
+	if err := decoder.Decode(&userCred); err != nil {
+		returnErrorAsJson(w, fmt.Sprintf(`Error decoding JSON. (%s)`, err))
+		return
+	}
+
+	var storedCred User
+
+	db := GetDB()
+	row := db.QueryRow(`SELECT password FROM userinfo WHERE username=$1`, userCred.Username)
+	err := row.Scan(&storedCred.HashedPassword)
+	if err == sql.ErrNoRows {
+		w.WriteHeader(http.StatusUnauthorized)
+		returnErrorAsJson(w, "Username not found.")
+		return
+	} else if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte (storedCred.HashedPassword), []byte ("SomeSaltHereMaybeThere" + userCred.Password)); err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		returnErrorAsJson(w, "Username and password doesn't match.")
+		return
+	}
+
+	return
+}
+
 func main() {
 	r := mux.NewRouter()	
 	
 	api := r.PathPrefix("/api").Subrouter()
 	api.HandleFunc("/", homeHandler)
 	api.HandleFunc("/signup", signupPostHandler).Methods(http.MethodPost)
+	api.HandleFunc("/login", loginPostHandler).Methods(http.MethodPost)
 
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		log.Fatal(err)
