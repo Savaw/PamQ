@@ -11,32 +11,10 @@ import (
 	"database/sql"
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
+	db "PamQ/database"
+	"PamQ/sessions"
 )
 
-var db *sql.DB
-
-const (
-	DB_USER = "postgres"
-	DB_NAME = "go_db_test"
-)
-
-func GetDB() *sql.DB {
-	dbinfo := fmt.Sprintf("user=%s dbname=%s sslmode=disable", DB_USER, DB_NAME)
-
-	var err error
-	db, err := sql.Open("postgres", dbinfo)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return db
-}
-
-func homeHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message":"Welcome"}`))
-}
 
 type User struct {	
 	Username		string	`db:"username"`
@@ -87,7 +65,7 @@ func (u * NewUser) CreateUser() (*User, error) {
 		Email: u.Email,
 		HashedPassword: string(hashedPassword)}
 
-	db := GetDB()
+	db := db.DB
 	if _, err := db.Query("INSERT INTO userinfo VALUES ($1,$2,$3)", user.Username, user.Email, user.HashedPassword); err != nil {
 		log.Println(err)
 		return nil, errors.New(fmt.Sprintf("User not created. (%s)", err))
@@ -157,7 +135,7 @@ func loginPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	var storedCred User
 
-	db := GetDB()
+	db := db.DB
 	row := db.QueryRow(`SELECT password FROM userinfo WHERE username=$1`, userCred.Username)
 	err := row.Scan(&storedCred.HashedPassword)
 	if err == sql.ErrNoRows {
@@ -174,17 +152,49 @@ func loginPostHandler(w http.ResponseWriter, r *http.Request) {
 		returnErrorAsJson(w, "Username and password doesn't match.")
 		return
 	}
+	log.Println("success")
+
+	if err := sessions.Login(w, r, userCred.Username); err != nil {
+		returnErrorAsJson(w, fmt.Sprintf("%s",err))
+		return
+	}
+
+	http.Redirect(w, r, "/", 302)
 
 	return
 }
 
-func main() {
-	r := mux.NewRouter()	
+func logoutPostHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := sessions.Logout(w, r); err != nil {
+		returnErrorAsJson(w, fmt.Sprintf("%s",err))
+		return
+	}
+	http.Redirect(w, r, "/", 302)
+}
+
+
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	username := sessions.GetUsername(r)
+	if username == nil {
+		returnMessageAsJson(w, "Welcome! Please login.")
+		return
+	}
+	returnMessageAsJson(w, fmt.Sprintf("Welcome %s!", username))
 	
+}
+
+func main() {
+	db.InitDB()
+	r := mux.NewRouter()	
+	r.HandleFunc("/", homeHandler)
+
 	api := r.PathPrefix("/api").Subrouter()
-	api.HandleFunc("/", homeHandler)
 	api.HandleFunc("/signup", signupPostHandler).Methods(http.MethodPost)
 	api.HandleFunc("/login", loginPostHandler).Methods(http.MethodPost)
+	api.HandleFunc("/logout", logoutPostHandler).Methods(http.MethodPost)
 
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		log.Fatal(err)
