@@ -41,7 +41,7 @@ func (u *NewUser) validate() error {
 	if len(u.Email) == 0 {
 		return ErrorMissingField("Email")
 	}
-	if matched, err := regexp.Match(`[\w.]+@\w+.\w+`, []byte(u.Email)); err != nil || matched == false {
+	if matched, err := regexp.Match(`[\w.]+@\w+\.\w+`, []byte(u.Email)); err != nil || matched == false {
 		return errors.New("Please enter a valid email.")
 	}
 	if len(u.Password) == 0 {

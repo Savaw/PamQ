@@ -26,5 +26,5 @@ CREATE TABLE question (
     option2     VARCHAR(500),
     option3     VARCHAR(500),
     option4     VARCHAR(500),
-    answer      INT
+    answer      VARCHAR(500)
 );
