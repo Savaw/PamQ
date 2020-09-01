@@ -53,6 +53,16 @@ func (u *NewUser) validate() error {
 	return nil
 }
 
+func (user *User) addUserToDb() error {
+	db := db.DB
+	if _, err := db.Query("INSERT INTO userinfo VALUES ($1,$2,$3)", user.Username, user.Email, user.HashedPassword); err != nil {
+		log.Println(err)
+		return errors.New(fmt.Sprintf("User not created. (%s)", err))
+	}
+	return nil
+
+}
+
 func (u *NewUser) createUser() (*User, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("SomeSaltHereMaybeThere"+u.Password), 8)
 	if err != nil {
@@ -64,13 +74,8 @@ func (u *NewUser) createUser() (*User, error) {
 		Email:          u.Email,
 		HashedPassword: string(hashedPassword)}
 
-	db := db.DB
-	if _, err := db.Query("INSERT INTO userinfo VALUES ($1,$2,$3)", user.Username, user.Email, user.HashedPassword); err != nil {
-		log.Println(err)
-		return nil, errors.New(fmt.Sprintf("User not created. (%s)", err))
-	}
-
-	return user, nil
+	err = user.addUserToDb()
+	return user, err
 }
 
 func SignupPostHandler(w http.ResponseWriter, r *http.Request) {
