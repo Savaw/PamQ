@@ -6,6 +6,8 @@ import (
 )
 
 func returnAsJson(w http.ResponseWriter, mp map[string]interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+
 	js, err2 := json.Marshal(mp)
 
 	if err2 != nil {

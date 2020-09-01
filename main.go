@@ -21,7 +21,7 @@ func main() {
 	api.HandleFunc("/logout", handlers.LogoutPostHandler).Methods(http.MethodPost)
 
 	quiz := api.PathPrefix("/quiz").Subrouter()
-	quiz.HandleFunc("/create", handlers.EmptyHandler)
+	quiz.HandleFunc("/create", handlers.CreateQuizHandler)
 	quiz.HandleFunc("/{quizID}", handlers.EmptyHandler)
 	quiz.HandleFunc("/{quizID}/edit", handlers.EmptyHandler)
 	quiz.HandleFunc("/{quizID}/result", handlers.EmptyHandler)

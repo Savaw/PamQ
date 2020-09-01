@@ -74,10 +74,10 @@ func (u *NewUser) createUser() (*User, error) {
 }
 
 func SignupPostHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 
 	if sessions.IsLoggedIn(r) {
 		w.WriteHeader(http.StatusForbidden)
+		returnErrorAsJson(w, "Please logout first.")
 		return
 	}
 	var newUser NewUser
@@ -108,7 +108,6 @@ func SignupPostHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LoginPostHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 
 	decoder := json.NewDecoder(r.Body)
 	var userCred NewUser
@@ -148,7 +147,6 @@ func LoginPostHandler(w http.ResponseWriter, r *http.Request) {
 
 //LogoutPostHandler handle logout with method post
 func LogoutPostHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	if err := sessions.Logout(w, r); err != nil {
 		returnErrorAsJson(w, fmt.Sprintf("%s", err))
 		return
