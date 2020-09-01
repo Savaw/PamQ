@@ -39,6 +39,13 @@ type NewQuiz struct {
 	Questions []interface{}
 }
 
+type QuizParticipation struct {
+	Id       int
+	QuizId   int
+	Username string
+	Result   string
+}
+
 func (q Question) validate() error {
 	if len(q.Statement) == 0 {
 		return ErrorMissingField("Statement")
@@ -178,21 +185,28 @@ func CreateQuizHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func GetQuizHandler(w http.ResponseWriter, r *http.Request) {
+func getQuizIdParam(r *http.Request) (int, error) {
 	pathParams := mux.Vars(r)
 
 	quizID_, ok := pathParams["quizID"]
 	if !ok {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return 0, errors.New("param not found")
 	}
 
 	quizID, err := strconv.Atoi(quizID_)
 	if err != nil {
+		return 0, errors.New("Page not found")
+	}
+	return quizID, nil
+
+}
+
+func QuizHandler(w http.ResponseWriter, r *http.Request) {
+	quizID, err := getQuizIdParam(r)
+	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-
 	var quiz Quiz
 
 	db := db.DB
@@ -233,13 +247,21 @@ func GetQuizHandler(w http.ResponseWriter, r *http.Request) {
 		quiz.Questions = append(quiz.Questions, r)
 	}
 
-	js, err := json.Marshal(&quiz)
-	if err != nil {
-		fmt.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+	if r.Method == http.MethodGet {
+		js, err := json.Marshal(&quiz)
+		if err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(js)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(js)
+	if r.Method == http.MethodPost {
+		//todo dododo
+	}
+
 }

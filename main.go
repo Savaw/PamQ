@@ -22,9 +22,9 @@ func main() {
 
 	quiz := api.PathPrefix("/quiz").Subrouter()
 	quiz.HandleFunc("/create", handlers.CreateQuizHandler).Methods(http.MethodPost)
-	quiz.HandleFunc("/{quizID}", handlers.GetQuizHandler).Methods(http.MethodGet)
-	quiz.HandleFunc("/{quizID}/edit", handlers.EmptyHandler)
-	quiz.HandleFunc("/{quizID}/result", handlers.EmptyHandler)
+	quiz.HandleFunc("/{quizID}", handlers.QuizHandler).Methods(http.MethodGet, http.MethodPost)
+	// quiz.HandleFunc("/{quizID}/edit", handlers.EmptyHandler)
+	// quiz.HandleFunc("/{quizID}/result", handlers.EmptyHandler)
 
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		log.Fatal(err)
