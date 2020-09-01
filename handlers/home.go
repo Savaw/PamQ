@@ -4,8 +4,6 @@ import (
 	"PamQ/sessions"
 	"fmt"
 	"net/http"
-
-	"github.com/gorilla/mux"
 )
 
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
@@ -23,9 +21,5 @@ func EmptyHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 
 	returnMessageAsJson(w, fmt.Sprintf("In process..."))
-	pathParams := mux.Vars(r)
 
-	if val, ok := pathParams["quizID"]; ok {
-		returnMessageAsJson(w, val)
-	}
 }

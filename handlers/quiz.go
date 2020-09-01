@@ -3,6 +3,7 @@ package handlers
 import (
 	db "PamQ/database"
 	"PamQ/sessions"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -108,7 +110,7 @@ func (q Question) addQuestionToDB() error {
 	}
 	return nil
 }
-func (q *Quiz) addQuizToDB() error {
+func (q *Quiz) addQuizToDB() (int, error) {
 	db := db.DB
 
 	var quizId int
@@ -116,15 +118,18 @@ func (q *Quiz) addQuizToDB() error {
 	err := row.Scan(&quizId)
 	if err != nil {
 		log.Println(err)
-		return errors.New(fmt.Sprintf("Quiz not created. (%s)", err))
+		return quizId, errors.New(fmt.Sprintf("Quiz not created. (%s)", err))
 	}
 
 	for _, question := range q.Questions {
 		question.QuizId = quizId
-		question.addQuestionToDB()
+		err := question.addQuestionToDB()
+		if err != nil {
+			return quizId, nil
+		}
 
 	}
-	return nil
+	return quizId, nil
 }
 
 func CreateQuizHandler(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +159,7 @@ func CreateQuizHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = quiz.addQuizToDB()
+	quizID, err := quiz.addQuizToDB()
 	if err != nil {
 		returnErrorAsJson(w, fmt.Sprintf("%s", err))
 		return
@@ -162,5 +167,79 @@ func CreateQuizHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	returnMessageAsJson(w, fmt.Sprintf(`Quiz created.`))
+	mp := map[string]interface{}{"message": "Quiz created.", "id": quizID}
+	js, err2 := json.Marshal(mp)
+
+	if err2 != nil {
+		http.Error(w, err2.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write(js)
+
+}
+
+func GetQuizHandler(w http.ResponseWriter, r *http.Request) {
+	pathParams := mux.Vars(r)
+
+	quizID_, ok := pathParams["quizID"]
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	quizID, err := strconv.Atoi(quizID_)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	var quiz Quiz
+
+	db := db.DB
+	err = db.QueryRow(`SELECT * FROM quiz WHERE id=$1`, quizID).Scan(&quiz.Id, &quiz.Creator, &quiz.Name)
+	if err != nil {
+		fmt.Println(err)
+		if err == sql.ErrNoRows {
+			returnErrorAsJson(w, "Quiz not found")
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	rows, err := db.Query(`SELECT * FROM question WHERE quiz_id=$1`, quizID)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+
+	}
+
+	var count int
+	row := db.QueryRow("SELECT COUNT(*) FROM question WHERE quiz_id=$1", quizID)
+	err = row.Scan(&count)
+	if err != nil {
+		log.Println(err)
+	}
+
+	for rows.Next() {
+		var r Question
+		err = rows.Scan(&r.Id, &r.QuizId, &r.QuestionType, &r.Statement, &r.Option1, &r.Option2, &r.Option3, &r.Option4, &r.Answer)
+		if err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		quiz.Questions = append(quiz.Questions, r)
+	}
+
+	js, err := json.Marshal(&quiz)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(js)
 }
