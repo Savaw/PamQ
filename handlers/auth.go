@@ -147,7 +147,15 @@ func LoginPostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	returnMessageAsJson(w, "Login successful.")
+	w.Header().Set("Content-Type", "application/json")
+	mp := map[string]interface{}{"message": "Login succesful.", "username": userCred.Username}
+	js, err2 := json.Marshal(mp)
+
+	if err2 != nil {
+		http.Error(w, err2.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write(js)
 }
 
 //LogoutPostHandler handle logout with method post
