@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
@@ -90,14 +91,17 @@ func (a AnswerResult) Mark() int {
 }
 
 func (q Question) check(userAnswer string) AnswerResult {
-	if len(q.Answer) == 0 {
+	uAns := strings.TrimSpace(userAnswer)
+	ans := strings.TrimSpace(q.Answer)
+
+	if len(ans) == 0 {
 		return QuestionAnswerNotProvided
 	}
-	if len(userAnswer) == 0 {
+	if len(uAns) == 0 {
 		return NoAnswer
 	}
 
-	if userAnswer == q.Answer {
+	if strings.EqualFold(uAns, ans) {
 		return Correct
 	} else {
 		return Wrong
