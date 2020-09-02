@@ -345,15 +345,11 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fmt.Println(userAnswers)
-
 		mark := 0
 		stats := [4]int{0, 0, 0, 0}
 		for _, question := range quiz.Questions {
 			userAnswer := userAnswers[strconv.Itoa(question.Id)]
-			fmt.Println("ans " + userAnswer)
 			res := question.check(userAnswer)
-			fmt.Println(res)
 			stats[res] += 1
 			mark += res.Mark()
 		}
