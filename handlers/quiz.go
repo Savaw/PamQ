@@ -20,11 +20,11 @@ type Question struct {
 	QuizId    int          `db:"quiz_id" json:"-"`
 	QType     QuestionType `db:"type" json:"type"` //type=1: multiple choice 	type=2: short answer
 	Statement string       `json:"statement"`
-	Option1   string       `json:"option1"`
-	Option2   string       `json:"option2"`
-	Option3   string       `json:"option3"`
-	Option4   string       `json:"option4"`
-	Answer    string       `json:"answer"`
+	Option1   string       `json:"option1,omitempty"`
+	Option2   string       `json:"option2,omitempty"`
+	Option3   string       `json:"option3,omitempty"`
+	Option4   string       `json:"option4,omitempty"`
+	Answer    string       `json:"answer,omitempty"`
 }
 
 type QuestionType int
@@ -315,6 +315,10 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
+		for i := range quiz.Questions {
+			quiz.Questions[i].Answer = ""
+		}
+
 		js, err := json.Marshal(&quiz)
 		if err != nil {
 			fmt.Println(err)
