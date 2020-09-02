@@ -140,16 +140,27 @@ func (q *NewQuiz) validate() (Quiz, error) {
 	quiz.Name = q.Name
 
 	for _, value := range q.Questions {
-		// fmt.Println(key, value.(map[string]interface{}))
 		q := value.(map[string]interface{})
 
 		qTypeError := errors.New("Please enter a valid type for question. (1 or 2)")
-		t, ok := q["type"].(string)
-		if !ok {
-			return quiz, qTypeError
+
+		t, ok := q["type"].(float64)
+		var questionType int
+		if ok {
+			questionType = int(t)
+		} else {
+			t, ok := q["type"].(string)
+			if !ok {
+				return quiz, qTypeError
+			}
+			var err error
+			questionType, err = strconv.Atoi(t)
+			if err != nil {
+				return quiz, qTypeError
+			}
 		}
-		questionType, err := strconv.Atoi(t)
-		if err != nil || (questionType != 1 && questionType != 2) {
+
+		if questionType != 1 && questionType != 2 {
 			return quiz, qTypeError
 		}
 
