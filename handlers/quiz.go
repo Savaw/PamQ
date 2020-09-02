@@ -16,22 +16,29 @@ import (
 )
 
 type Question struct {
-	Id           int
-	QuizId       int `db:"quiz_id" json:"-"`
-	QuestionType int `db:"type" json:"type"` //type=1: multiple choice 	type=2: short answer
-	Statement    string
-	Option1      string
-	Option2      string
-	Option3      string
-	Option4      string
-	Answer       string
+	Id        int          `json:"id"`
+	QuizId    int          `db:"quiz_id" json:"-"`
+	QType     QuestionType `db:"type" json:"type"` //type=1: multiple choice 	type=2: short answer
+	Statement string       `json:"statement"`
+	Option1   string       `json:"option1"`
+	Option2   string       `json:"option2"`
+	Option3   string       `json:"option3"`
+	Option4   string       `json:"option4"`
+	Answer    string       `json:"answer"`
 }
 
+type QuestionType int
+
+const (
+	MultiChoice = iota + 1
+	ShortAnswer
+)
+
 type Quiz struct {
-	Id        int
-	Creator   string
-	Name      string
-	Questions []Question
+	Id        int        `json:"id"`
+	Creator   string     `json:"creator"`
+	Name      string     `json:"name"`
+	Questions []Question `json:"questions"`
 }
 
 type NewQuiz struct {
@@ -41,16 +48,67 @@ type NewQuiz struct {
 
 type QuizParticipation struct {
 	Id       int
-	QuizId   int
+	QuizId   int `db:"quiz_id"`
 	Username string
 	Result   string
+}
+
+// type UserAnswer struct {
+// 	QuestionId int `json:"id"`
+// 	Answer     string
+// }
+
+// type UserAnswers struct {
+// 	Answers []UserAnswer
+// }
+
+type AnswerResult int
+
+const (
+	Wrong AnswerResult = iota
+	NoAnswer
+	Correct
+	QuestionAnswerNotProvided
+)
+
+func (a AnswerResult) String() string {
+	l := [...]string{"Wrong", "NoAnswer", "Correct", "QuestionAnswerNotProvided"}
+	if a >= 0 && a < 4 {
+		return l[a]
+	}
+	return "Unknown"
+}
+
+func (a AnswerResult) Mark() int {
+	switch a {
+	case Correct:
+		return 1
+	case Wrong, NoAnswer, QuestionAnswerNotProvided:
+		return 0
+	}
+	return 0
+}
+
+func (q Question) check(userAnswer string) AnswerResult {
+	if len(q.Answer) == 0 {
+		return QuestionAnswerNotProvided
+	}
+	if len(userAnswer) == 0 {
+		return NoAnswer
+	}
+
+	if userAnswer == q.Answer {
+		return Correct
+	} else {
+		return Wrong
+	}
 }
 
 func (q Question) validate() error {
 	if len(q.Statement) == 0 {
 		return ErrorMissingField("Statement")
 	}
-	if q.QuestionType == 1 {
+	if q.QType == 1 {
 		if len(q.Option1) == 0 {
 			return ErrorMissingField("Option1")
 		}
@@ -97,7 +155,7 @@ func (q *NewQuiz) validate() (Quiz, error) {
 
 		var question Question
 		mapstructure.Decode(q, &question)
-		question.QuestionType = questionType
+		question.QType = QuestionType(questionType)
 
 		if err := question.validate(); err != nil {
 			return quiz, err
@@ -109,15 +167,24 @@ func (q *NewQuiz) validate() (Quiz, error) {
 	return quiz, nil
 }
 
-func (q Question) addQuestionToDB() error {
+func (p QuizParticipation) addToDB() error {
 	db := db.DB
-	if _, err := db.Query("INSERT INTO question (quiz_id, type, statement, option1, option2, option3, option4, answer) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", q.QuizId, q.QuestionType, q.Statement, q.Option1, q.Option2, q.Option3, q.Option4, q.Answer); err != nil {
+	if _, err := db.Query("INSERT INTO quiz_participation (quiz_id, username, result) VALUES($1, $2, $3)", p.QuizId, p.Username, p.Result); err != nil {
+		log.Println(err)
+		return errors.New(fmt.Sprintf("Result not saved. (%s)", err))
+	}
+	return nil
+}
+
+func (q Question) addToDB() error {
+	db := db.DB
+	if _, err := db.Query("INSERT INTO question (quiz_id, type, statement, option1, option2, option3, option4, answer) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", q.QuizId, q.QType, q.Statement, q.Option1, q.Option2, q.Option3, q.Option4, q.Answer); err != nil {
 		log.Println(err)
 		return errors.New(fmt.Sprintf("Question not created. (%s)", err))
 	}
 	return nil
 }
-func (q *Quiz) addQuizToDB() (int, error) {
+func (q *Quiz) addToDB() (int, error) {
 	db := db.DB
 
 	var quizId int
@@ -130,7 +197,7 @@ func (q *Quiz) addQuizToDB() (int, error) {
 
 	for _, question := range q.Questions {
 		question.QuizId = quizId
-		err := question.addQuestionToDB()
+		err := question.addToDB()
 		if err != nil {
 			return quizId, nil
 		}
@@ -166,7 +233,7 @@ func CreateQuizHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	quizID, err := quiz.addQuizToDB()
+	quizID, err := quiz.addToDB()
 	if err != nil {
 		returnErrorAsJson(w, fmt.Sprintf("%s", err))
 		return
@@ -238,7 +305,7 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var r Question
-		err = rows.Scan(&r.Id, &r.QuizId, &r.QuestionType, &r.Statement, &r.Option1, &r.Option2, &r.Option3, &r.Option4, &r.Answer)
+		err = rows.Scan(&r.Id, &r.QuizId, &r.QType, &r.Statement, &r.Option1, &r.Option2, &r.Option3, &r.Option4, &r.Answer)
 		if err != nil {
 			fmt.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -261,7 +328,64 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodPost {
-		//todo dododo
-	}
+		if !sessions.IsLoggedIn(r) {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
 
+		// var userAnswers UserAnswers
+		var userAnswers map[string]string
+		decoder := json.NewDecoder(r.Body)
+		if err := decoder.Decode(&userAnswers); err != nil {
+			returnErrorAsJson(w, fmt.Sprintf(`Error decoding JSON. (%s)`, err))
+			return
+		}
+
+		fmt.Println(userAnswers)
+
+		mark := 0
+		stats := [4]int{0, 0, 0, 0}
+		for _, question := range quiz.Questions {
+			userAnswer := userAnswers[strconv.Itoa(question.Id)]
+			fmt.Println("ans " + userAnswer)
+			res := question.check(userAnswer)
+			fmt.Println(res)
+			stats[res] += 1
+			mark += res.Mark()
+		}
+
+		username, ok := sessions.GetUsername(r).(string)
+		if !ok {
+			w.WriteHeader(http.StatusInternalServerError)
+			returnErrorAsJson(w, "Error getting username")
+			return
+		}
+
+		participation := QuizParticipation{
+			QuizId:   quizID,
+			Username: username,
+			Result:   strconv.Itoa(mark)}
+
+		err = participation.addToDB()
+
+		if err != nil {
+			returnErrorAsJson(w, fmt.Sprintf("%s", err))
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		mp := map[string]interface{}{"message": "result saved.", "result": participation.Result}
+		for i := 0; i < 4; i++ {
+			mp[AnswerResult(i).String()] = stats[AnswerResult(i)]
+		}
+
+		js, err2 := json.Marshal(mp)
+
+		if err2 != nil {
+			http.Error(w, err2.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Write(js)
+	}
 }
