@@ -38,12 +38,12 @@ type Quiz struct {
 	Id        int        `json:"id"`
 	Creator   string     `json:"creator"`
 	Name      string     `json:"name"`
-	Questions []Question `json:"questions"`
+	Questions []Question `json:"questions,omitempty"`
 }
 
 type NewQuiz struct {
-	Name      string
-	Questions []interface{}
+	Name      string        `json:"name"`
+	Questions []interface{} `json:"questions"`
 }
 
 type QuizParticipation struct {
@@ -279,7 +279,7 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) {
 	db := db.DB
 	err = db.QueryRow(`SELECT * FROM quiz WHERE id=$1`, quizID).Scan(&quiz.Id, &quiz.Creator, &quiz.Name)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		if err == sql.ErrNoRows {
 			returnErrorAsJson(w, "Quiz not found")
 			return
@@ -290,24 +290,17 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.Query(`SELECT * FROM question WHERE quiz_id=$1`, quizID)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 
-	}
-
-	var count int
-	row := db.QueryRow("SELECT COUNT(*) FROM question WHERE quiz_id=$1", quizID)
-	err = row.Scan(&count)
-	if err != nil {
-		log.Println(err)
 	}
 
 	for rows.Next() {
 		var r Question
 		err = rows.Scan(&r.Id, &r.QuizId, &r.QType, &r.Statement, &r.Option1, &r.Option2, &r.Option3, &r.Option4, &r.Answer)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -321,7 +314,7 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) {
 
 		js, err := json.Marshal(&quiz)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -388,4 +381,51 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Write(js)
 	}
+}
+
+func ListOfQuizesHandler(w http.ResponseWriter, r *http.Request) {
+
+	query := r.URL.Query()
+	username := query.Get("createdby")
+
+	db := db.DB
+	var rows *sql.Rows
+	var err error
+
+	if len(username) != 0 {
+		rows, err = db.Query(`SELECT * FROM quiz WHERE creator=$1`, username)
+	} else {
+		rows, err = db.Query(`SELECT * FROM quiz`)
+	}
+
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+
+	}
+	quizes := []Quiz{}
+
+	for rows.Next() {
+		var q Quiz
+		err = rows.Scan(&q.Id, &q.Creator, &q.Name)
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		quizes = append(quizes, q)
+	}
+
+	mp := map[string]interface{}{"quizes": quizes}
+	js, err := json.Marshal(mp)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(js)
+	return
 }

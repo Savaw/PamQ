@@ -140,7 +140,6 @@ func LoginPostHandler(w http.ResponseWriter, r *http.Request) {
 		returnErrorAsJson(w, "Username and password doesn't match.")
 		return
 	}
-	log.Println("success")
 
 	if err := sessions.Login(w, r, userCred.Username); err != nil {
 		returnErrorAsJson(w, fmt.Sprintf("%s", err))
