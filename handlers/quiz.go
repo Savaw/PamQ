@@ -36,15 +36,27 @@ const (
 )
 
 type Quiz struct {
-	Id        int        `json:"id"`
-	Creator   string     `json:"creator"`
-	Name      string     `json:"name"`
-	Questions []Question `json:"questions,omitempty"`
+	Id                   int        `json:"id"`
+	Creator              string     `json:"creator"`
+	Name                 string     `json:"name"`
+	Questions            []Question `json:"questions,omitempty"`
+	GradingType          int        `json:"grading_type"`
+	PassFail             bool       `json:"pass_fail"`
+	PassingScore         int        `json:"passong_score"`
+	NotFailText          string     `json:"not_fail_text"`
+	FailText             string     `json:"fail_text"`
+	AllowedParticipation int        `json:"allowed_participation"`
 }
 
 type NewQuiz struct {
-	Name      string        `json:"name"`
-	Questions []interface{} `json:"questions"`
+	Name                 string        `json:"name"`
+	Questions            []interface{} `json:"questions"`
+	GradingType          int           `json:"grading_type"`
+	PassFail             bool          `json:"pass_fail"`
+	PassingScore         int           `json:"passong_score"`
+	NotFailText          string        `json:"not_fail_text"`
+	FailText             string        `json:"fail_text"`
+	AllowedParticipation int           `json:"allowed_participation"`
 }
 
 type QuizParticipation struct {

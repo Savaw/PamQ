@@ -5,9 +5,15 @@ CREATE TABLE userinfo (
 );
 
 CREATE TABLE quiz (
-    id          BIGSERIAL PRIMARY KEY,
-    creator     VARCHAR(50) NOT NULL REFERENCES userinfo ON DELETE CASCADE,
-    name        VARCHAR(200) NOT NULL
+    id              BIGSERIAL PRIMARY KEY,
+    creator         VARCHAR(50) NOT NULL REFERENCES userinfo ON DELETE CASCADE,
+    name            VARCHAR(200) NOT NULL,
+    grading_type    INT NOT NULL,   
+    pass_fail       BOOLEAN NOT NULL,
+    passing_score   INT,
+    not_fail_text   VARCHAR(500),
+    fail_text       VARCHAR(500),
+    allowed_participations INT NOT NULL
 );
 
 CREATE TABLE quiz_participation (
