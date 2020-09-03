@@ -20,7 +20,9 @@ CREATE TABLE quiz_participation (
     id          BIGSERIAL PRIMARY KEY,
     quiz_id     BIGINT NOT NULL REFERENCES quiz ON DELETE CASCADE,
     username    VARCHAR(50) NOT NULL REFERENCES userinfo ON DELETE CASCADE,
-    result      VARCHAR(500)
+    result      VARCHAR(500),
+    score       FLOAT,
+    pass_fail   BOOLEAN
 );
 
 CREATE TABLE question (

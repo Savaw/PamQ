@@ -40,9 +40,9 @@ type Quiz struct {
 	Creator               string     `json:"creator"`
 	Name                  string     `json:"name"`
 	Questions             []Question `json:"questions,omitempty"`
-	GradingType           int        `json:"grading_type" db:"grading_type"`
+	GradingType           Grading    `json:"grading_type" db:"grading_type"`
 	PassFail              bool       `json:"pass_fail" db:"pass_fail"`
-	PassingScore          int        `json:"passing_score" db:"passing_score"`
+	PassingScore          float64    `json:"passing_score" db:"passing_score"`
 	NotFailText           string     `json:"not_fail_text" db:"not_fail_text"`
 	FailText              string     `json:"fail_text" db:"fail_text"`
 	AllowedParticipations int        `json:"allowed_participation" db:"allowed_participation"`
@@ -51,9 +51,9 @@ type Quiz struct {
 type NewQuiz struct {
 	Name                  string        `db,json:"name"`
 	NewQuestions          []interface{} `json:"questions"`
-	GradingType           int           `json:"grading_type" db:"grading_type"`
+	GradingType           Grading       `json:"grading_type" db:"grading_type"`
 	PassFail              bool          `json:"pass_fail" db:"pass_fail"`
-	PassingScore          int           `json:"passing_score" db:"passing_score"`
+	PassingScore          float64       `json:"passing_score" db:"passing_score"`
 	NotFailText           string        `json:"not_fail_text" db:"not_fail_text"`
 	FailText              string        `json:"fail_text" db:"fail_text"`
 	AllowedParticipations int           `json:"allowed_participation" db:"allowed_participation"`
@@ -64,6 +64,8 @@ type QuizParticipation struct {
 	QuizId   int `db:"quiz_id"`
 	Username string
 	Result   string
+	Score    float64
+	PassFail bool `db:"pass_fail"`
 }
 
 // type UserAnswer struct {
@@ -92,13 +94,33 @@ func (a AnswerResult) String() string {
 	return "Unknown"
 }
 
-func (a AnswerResult) Mark() int {
-	switch a {
-	case Correct:
-		return 1
-	case Wrong, NoAnswer, QuestionAnswerNotProvided:
-		return 0
+type Grading int
+
+const (
+	OnlyCorrect Grading = iota + 1
+	WithNegetiveMark
+)
+
+func (a AnswerResult) Mark(g Grading) float64 {
+	switch g {
+	case OnlyCorrect:
+		switch a {
+		case Correct:
+			return 1
+		case Wrong, NoAnswer, QuestionAnswerNotProvided:
+			return 0
+		}
+	case WithNegetiveMark:
+		switch a {
+		case Correct:
+			return 1
+		case Wrong:
+			return -0.25
+		case NoAnswer, QuestionAnswerNotProvided:
+			return 0
+		}
 	}
+
 	return 0
 }
 
@@ -354,6 +376,9 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) {
 			quiz.Questions[i].Answer = ""
 		}
 
+		quiz.FailText = ""
+		quiz.NotFailText = ""
+
 		js, err := json.Marshal(&quiz)
 		if err != nil {
 			log.Println(err)
@@ -380,13 +405,17 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		mark := 0
+		mark := 0.0
+		totalScore := 0.0
 		stats := [4]int{0, 0, 0, 0}
 		for _, question := range quiz.Questions {
 			userAnswer := userAnswers[strconv.Itoa(question.Id)]
 			res := question.check(userAnswer)
 			stats[res] += 1
-			mark += res.Mark()
+			mark += res.Mark(quiz.GradingType)
+			if res != QuestionAnswerNotProvided {
+				totalScore += 1
+			}
 		}
 
 		username, ok := sessions.GetUsername(r).(string)
@@ -399,7 +428,15 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) {
 		participation := QuizParticipation{
 			QuizId:   quizID,
 			Username: username,
-			Result:   strconv.Itoa(mark)}
+			Score:    mark / totalScore * 100}
+
+		if quiz.PassFail && participation.Score < quiz.PassingScore {
+			participation.PassFail = false
+			participation.Result = quiz.FailText
+		} else {
+			participation.PassFail = true
+			participation.Result = quiz.NotFailText
+		}
 
 		err = participation.addToDB()
 
@@ -410,7 +447,7 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		mp := map[string]interface{}{"message": "result saved.", "result": participation.Result}
+		mp := map[string]interface{}{"message": "result saved.", "result": participation.Result, "score": participation.Score, "pass": participation.PassFail}
 		for i := 0; i < 4; i++ {
 			mp[AnswerResult(i).String()] = stats[AnswerResult(i)]
 		}
@@ -434,10 +471,11 @@ func ListOfQuizesHandler(w http.ResponseWriter, r *http.Request) {
 	var rows *sql.Rows
 	var err error
 
+	dbQuery := `SELECT id, creator, name, grading_type, pass_fail, passing_score, allowed_participations FROM quiz`
 	if len(username) != 0 {
-		rows, err = db.Query(`SELECT * FROM quiz WHERE creator=$1`, username)
+		rows, err = db.Query(dbQuery+` WHERE creator=$1`, username)
 	} else {
-		rows, err = db.Query(`SELECT * FROM quiz`)
+		rows, err = db.Query(dbQuery)
 	}
 
 	if err != nil {
@@ -450,7 +488,7 @@ func ListOfQuizesHandler(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var quiz Quiz
-		err = rows.Scan(&quiz.Id, &quiz.Creator, &quiz.Name, &quiz.GradingType, &quiz.PassFail, &quiz.PassingScore, &quiz.NotFailText, &quiz.FailText, &quiz.AllowedParticipations)
+		err = rows.Scan(&quiz.Id, &quiz.Creator, &quiz.Name, &quiz.GradingType, &quiz.PassFail, &quiz.PassingScore, &quiz.AllowedParticipations)
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
