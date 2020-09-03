@@ -36,27 +36,27 @@ const (
 )
 
 type Quiz struct {
-	Id                   int        `json:"id"`
-	Creator              string     `json:"creator"`
-	Name                 string     `json:"name"`
-	Questions            []Question `json:"questions,omitempty"`
-	GradingType          int        `json:"grading_type"`
-	PassFail             bool       `json:"pass_fail"`
-	PassingScore         int        `json:"passong_score"`
-	NotFailText          string     `json:"not_fail_text"`
-	FailText             string     `json:"fail_text"`
-	AllowedParticipation int        `json:"allowed_participation"`
+	Id                    int        `json:"id"`
+	Creator               string     `json:"creator"`
+	Name                  string     `json:"name"`
+	Questions             []Question `json:"questions,omitempty"`
+	GradingType           int        `json:"grading_type" db:"grading_type"`
+	PassFail              bool       `json:"pass_fail" db:"pass_fail"`
+	PassingScore          int        `json:"passing_score" db:"passing_score"`
+	NotFailText           string     `json:"not_fail_text" db:"not_fail_text"`
+	FailText              string     `json:"fail_text" db:"fail_text"`
+	AllowedParticipations int        `json:"allowed_participation" db:"allowed_participation"`
 }
 
 type NewQuiz struct {
-	Name                 string        `json:"name"`
-	Questions            []interface{} `json:"questions"`
-	GradingType          int           `json:"grading_type"`
-	PassFail             bool          `json:"pass_fail"`
-	PassingScore         int           `json:"passong_score"`
-	NotFailText          string        `json:"not_fail_text"`
-	FailText             string        `json:"fail_text"`
-	AllowedParticipation int           `json:"allowed_participation"`
+	Name                  string        `db,json:"name"`
+	NewQuestions          []interface{} `json:"questions"`
+	GradingType           int           `json:"grading_type" db:"grading_type"`
+	PassFail              bool          `json:"pass_fail" db:"pass_fail"`
+	PassingScore          int           `json:"passing_score" db:"passing_score"`
+	NotFailText           string        `json:"not_fail_text" db:"not_fail_text"`
+	FailText              string        `json:"fail_text" db:"fail_text"`
+	AllowedParticipations int           `json:"allowed_participation" db:"allowed_participation"`
 }
 
 type QuizParticipation struct {
@@ -147,25 +147,38 @@ func (q *NewQuiz) validate() (Quiz, error) {
 	var quiz Quiz
 
 	if len(q.Name) == 0 {
-		return quiz, ErrorMissingField("Name")
+		return quiz, ErrorMissingField("name")
 	}
-	if len(q.Questions) == 0 {
-		return quiz, ErrorMissingField("Questions")
+	if len(q.NewQuestions) == 0 {
+		return quiz, ErrorMissingField("questions")
+	}
+
+	if q.GradingType < 1 || q.GradingType > 2 {
+		return quiz, errors.New("Please enter a valid type for Grading Type. (1 or 2)")
+	}
+
+	if q.AllowedParticipations == 0 {
+		return quiz, ErrorMissingField("allowed_participations")
 	}
 
 	quiz.Name = q.Name
+	err := mapstructure.Decode(q, &quiz)
+	if err != nil {
+		log.Println(err)
+		return quiz, err
+	}
 
-	for _, value := range q.Questions {
-		q := value.(map[string]interface{})
+	for _, value := range q.NewQuestions {
+		qu := value.(map[string]interface{})
 
 		qTypeError := errors.New("Please enter a valid type for question. (1 or 2)")
 
-		t, ok := q["type"].(float64)
+		t, ok := qu["type"].(float64)
 		var questionType int
 		if ok {
 			questionType = int(t)
 		} else {
-			t, ok := q["type"].(string)
+			t, ok := qu["type"].(string)
 			if !ok {
 				return quiz, qTypeError
 			}
@@ -181,7 +194,7 @@ func (q *NewQuiz) validate() (Quiz, error) {
 		}
 
 		var question Question
-		mapstructure.Decode(q, &question)
+		mapstructure.Decode(qu, &question)
 		question.QType = QuestionType(questionType)
 
 		if err := question.validate(); err != nil {
@@ -215,7 +228,7 @@ func (q *Quiz) addToDB() (int, error) {
 	db := db.DB
 
 	var quizId int
-	row := db.QueryRow("INSERT INTO quiz (creator, name) VALUES ($1, $2) RETURNING id", q.Creator, q.Name)
+	row := db.QueryRow("INSERT INTO quiz (creator, name,  grading_type, pass_fail, passing_score, not_fail_text,fail_text, allowed_participations) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id", q.Creator, q.Name, q.GradingType, q.PassFail, q.PassingScore, q.NotFailText, q.FailText, q.AllowedParticipations)
 	err := row.Scan(&quizId)
 	if err != nil {
 		log.Println(err)
@@ -304,14 +317,16 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) {
 	var quiz Quiz
 
 	db := db.DB
-	err = db.QueryRow(`SELECT * FROM quiz WHERE id=$1`, quizID).Scan(&quiz.Id, &quiz.Creator, &quiz.Name)
+	err = db.QueryRow(`SELECT * FROM quiz WHERE id=$1`, quizID).Scan(&quiz.Id, &quiz.Creator, &quiz.Name, &quiz.GradingType, &quiz.PassFail, &quiz.PassingScore, &quiz.NotFailText, &quiz.FailText, &quiz.AllowedParticipations)
+
 	if err != nil {
-		log.Println(err)
 		if err == sql.ErrNoRows {
 			returnErrorAsJson(w, "Quiz not found")
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
+
+		log.Fatal(err)
 		return
 	}
 
@@ -434,14 +449,14 @@ func ListOfQuizesHandler(w http.ResponseWriter, r *http.Request) {
 	quizes := []Quiz{}
 
 	for rows.Next() {
-		var q Quiz
-		err = rows.Scan(&q.Id, &q.Creator, &q.Name)
+		var quiz Quiz
+		err = rows.Scan(&quiz.Id, &quiz.Creator, &quiz.Name, &quiz.GradingType, &quiz.PassFail, &quiz.PassingScore, &quiz.NotFailText, &quiz.FailText, &quiz.AllowedParticipations)
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		quizes = append(quizes, q)
+		quizes = append(quizes, quiz)
 	}
 
 	mp := map[string]interface{}{"quizes": quizes}
