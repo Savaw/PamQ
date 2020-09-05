@@ -26,9 +26,9 @@ func startServer() {
 	api.Handle("/logout", handlers.RootHandler(handlers.LogoutPostHandler)).Methods(http.MethodPost)
 
 	quiz := api.PathPrefix("/quiz").Subrouter()
-	quiz.HandleFunc("/create", handlers.CreateQuizHandler).Methods(http.MethodPost)
-	quiz.HandleFunc("/all", handlers.ListOfQuizesHandler).Methods(http.MethodGet)
-	quiz.HandleFunc("/{quizID}", handlers.QuizHandler).Methods(http.MethodGet, http.MethodPost)
+	quiz.Handle("/create", handlers.RootHandler(handlers.CreateQuizHandler)).Methods(http.MethodPost)
+	quiz.Handle("/all", handlers.RootHandler(handlers.ListOfQuizesHandler)).Methods(http.MethodGet)
+	quiz.Handle("/{quizID}", handlers.RootHandler(handlers.QuizHandler)).Methods(http.MethodGet, http.MethodPost)
 
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		log.Fatal(err)

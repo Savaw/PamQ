@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"PamQ/sessions"
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -22,4 +24,13 @@ func EmptyHandler(w http.ResponseWriter, r *http.Request) {
 
 	returnMessageAsJson(w, fmt.Sprintf("In process..."))
 
+}
+func returnMessageAsJson(w http.ResponseWriter, msg string) {
+	mp := map[string]interface{}{"message": msg}
+	js, err := json.Marshal(mp)
+	if err != nil {
+		log.Printf("err return msg as js")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(js)
 }

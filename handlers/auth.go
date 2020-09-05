@@ -22,7 +22,7 @@ func SignupPostHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if err := newUser.validate(); err != nil {
-		return NewClientError(err, http.StatusBadRequest, "Invalid form")
+		return NewClientError(err, http.StatusBadRequest, "Invalid form data")
 	}
 
 	var user *User
@@ -31,8 +31,14 @@ func SignupPostHandler(w http.ResponseWriter, r *http.Request) error {
 		return NewServerError(err, 500, "Create user error")
 	}
 
+	mp := map[string]interface{}{"message": fmt.Sprintf("User %s created.", user.Username)}
+	js, err := json.Marshal(mp)
+	if err != nil {
+		return NewServerError(err, 500, "Error while parsing response body")
+	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	returnMessageAsJson(w, fmt.Sprintf(`User %s created.`, user.Username))
+	w.Write(js)
 	return nil
 }
 
@@ -56,12 +62,12 @@ func LoginPostHandler(w http.ResponseWriter, r *http.Request) error {
 		return NewServerError(err, 500, "Sessions login error")
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	mp := map[string]interface{}{"message": "Login succesful.", "username": userCred.Username}
 	js, err := json.Marshal(mp)
 	if err != nil {
 		return NewServerError(err, 500, "Error while parsing response body")
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
 	return nil
 }
@@ -70,6 +76,12 @@ func LogoutPostHandler(w http.ResponseWriter, r *http.Request) error {
 	if err := sessions.Logout(w, r); err != nil {
 		return NewServerError(err, 500, "Sessions logout error")
 	}
-	returnMessageAsJson(w, "Logout successful.")
+	mp := map[string]interface{}{"message": "Logout succesful."}
+	js, err := json.Marshal(mp)
+	if err != nil {
+		return NewServerError(err, 500, "Error while parsing response body")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(js)
 	return nil
 }
