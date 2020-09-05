@@ -24,13 +24,21 @@ func (e ErrorMissingField) Error() string {
 	return string(e) + " is required."
 }
 
-type ClientError interface {
-	Error() string
-	ResponseBody() ([]byte, error)
-	ResponseHeaders() (int, map[string]string)
-}
+// type ClientError interface {
+// 	Error() string
+// 	ResponseBody() ([]byte, error)
+// 	ResponseHeaders() (int, map[string]string)
+// }
+
+type ErrorType int
+
+const (
+	ClientError ErrorType = iota
+	ServerError
+)
 
 type HTTPError struct {
+	Type   ErrorType
 	Cause  error
 	Detail string
 	Status int
@@ -55,8 +63,18 @@ func (e *HTTPError) ResponseHeaders() (int, map[string]string) {
 	return e.Status, mp
 }
 
-func NewHTTPError(err error, status int, detail string) error {
+func NewClientError(err error, status int, detail string) error {
 	return &HTTPError{
+		Type:   ClientError,
+		Cause:  err,
+		Detail: detail,
+		Status: status,
+	}
+}
+
+func NewServerError(err error, status int, detail string) error {
+	return &HTTPError{
+		Type:   ClientError,
 		Cause:  err,
 		Detail: detail,
 		Status: status,

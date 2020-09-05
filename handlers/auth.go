@@ -12,23 +12,23 @@ import (
 
 func SignupPostHandler(w http.ResponseWriter, r *http.Request) error {
 	if sessions.IsLoggedIn(r) {
-		return NewHTTPError(nil, http.StatusForbidden, "Logout in order to signup.")
+		return NewClientError(nil, http.StatusForbidden, "Logout in order to signup.")
 	}
 
 	var newUser NewUser
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&newUser); err != nil {
-		return NewHTTPError(err, 400, "Bad request : invalid JSON.")
+		return NewClientError(err, 400, "Bad request : invalid JSON.")
 	}
 
 	if err := newUser.validate(); err != nil {
-		return NewHTTPError(nil, http.StatusBadRequest, err.Error())
+		return NewClientError(err, http.StatusBadRequest, "Invalid form")
 	}
 
 	var user *User
 	var err error
 	if user, err = newUser.createUser(); err != nil {
-		return fmt.Errorf("create user signup error : %v", err)
+		return NewServerError(err, 500, "Create user error")
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -40,7 +40,7 @@ func LoginPostHandler(w http.ResponseWriter, r *http.Request) error {
 	decoder := json.NewDecoder(r.Body)
 	var userCred NewUser
 	if err := decoder.Decode(&userCred); err != nil {
-		return NewHTTPError(err, 400, "Bad request : invalid JSON.")
+		return NewClientError(err, 400, "Bad request : invalid JSON.")
 	}
 
 	hashedPass, err := getUserPass(userCred.Username)
@@ -49,18 +49,18 @@ func LoginPostHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(hashedPass), []byte("SomeSaltHereMaybeThere"+userCred.Password)); err != nil {
-		return NewHTTPError(err, http.StatusUnauthorized, "Username and password doesn't match.")
+		return NewClientError(err, http.StatusUnauthorized, "Username and password doesn't match.")
 	}
 
 	if err := sessions.Login(w, r, userCred.Username); err != nil {
-		return fmt.Errorf("Session login error: %v", err)
+		return NewServerError(err, 500, "Sessions login error")
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	mp := map[string]interface{}{"message": "Login succesful.", "username": userCred.Username}
 	js, err := json.Marshal(mp)
 	if err != nil {
-		return fmt.Errorf("Error while parsing response body: %v", err)
+		return NewServerError(err, 500, "Error while parsing response body")
 	}
 	w.Write(js)
 	return nil
@@ -68,7 +68,7 @@ func LoginPostHandler(w http.ResponseWriter, r *http.Request) error {
 
 func LogoutPostHandler(w http.ResponseWriter, r *http.Request) error {
 	if err := sessions.Logout(w, r); err != nil {
-		return fmt.Errorf("Session logout error: %v", err)
+		return NewServerError(err, 500, "Sessions logout error")
 	}
 	returnMessageAsJson(w, "Logout successful.")
 	return nil

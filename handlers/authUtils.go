@@ -4,7 +4,6 @@ import (
 	db "PamQ/database"
 	"database/sql"
 	"errors"
-	"fmt"
 	"net/http"
 	"regexp"
 
@@ -47,7 +46,7 @@ func (u *NewUser) validate() error {
 func (user *User) addToDb() error {
 	db := db.DB
 	if _, err := db.Query("INSERT INTO userinfo VALUES ($1,$2,$3)", user.Username, user.Email, user.HashedPassword); err != nil {
-		return fmt.Errorf("User not created. (%s)", err)
+		return err
 	}
 	return nil
 
@@ -56,7 +55,7 @@ func (user *User) addToDb() error {
 func (u *NewUser) createUser() (*User, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("SomeSaltHereMaybeThere"+u.Password), 8)
 	if err != nil {
-		return nil, fmt.Errorf("Error %s", err)
+		return nil, err
 	}
 
 	user := &User{
@@ -74,7 +73,7 @@ func getUserPass(username string) (string, error) {
 	row := db.QueryRow(`SELECT password FROM userinfo WHERE username=$1`, username)
 	err := row.Scan(&hashedPass)
 	if err == sql.ErrNoRows {
-		return hashedPass, NewHTTPError(err, http.StatusUnauthorized, "Username not found.")
+		return hashedPass, NewClientError(err, http.StatusUnauthorized, "Username not found.")
 	} else if err != nil {
 		return hashedPass, err
 	}

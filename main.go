@@ -12,6 +12,10 @@ import (
 )
 
 func main() {
+	startServer()
+}
+
+func startServer() {
 	db.InitDB()
 	r := mux.NewRouter()
 	r.HandleFunc("/", handlers.HomeHandler)
