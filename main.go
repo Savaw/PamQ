@@ -2,6 +2,7 @@ package main
 
 import (
 	db "PamQ/database"
+
 	"PamQ/handlers"
 	"log"
 	"net/http"
@@ -16,9 +17,9 @@ func main() {
 	r.HandleFunc("/", handlers.HomeHandler)
 
 	api := r.PathPrefix("/api").Subrouter()
-	api.HandleFunc("/signup", handlers.SignupPostHandler).Methods(http.MethodPost)
-	api.HandleFunc("/login", handlers.LoginPostHandler).Methods(http.MethodPost)
-	api.HandleFunc("/logout", handlers.LogoutPostHandler).Methods(http.MethodPost)
+	api.Handle("/signup", handlers.RootHandler(handlers.SignupPostHandler)).Methods(http.MethodPost)
+	api.Handle("/login", handlers.RootHandler(handlers.LoginPostHandler)).Methods(http.MethodPost)
+	api.Handle("/logout", handlers.RootHandler(handlers.LogoutPostHandler)).Methods(http.MethodPost)
 
 	quiz := api.PathPrefix("/quiz").Subrouter()
 	quiz.HandleFunc("/create", handlers.CreateQuizHandler).Methods(http.MethodPost)

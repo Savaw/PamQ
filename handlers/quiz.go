@@ -18,8 +18,8 @@ import (
 
 type Question struct {
 	Id        int          `json:"id"`
-	QuizId    int          `db:"quiz_id" json:"-"`
-	QType     QuestionType `db:"type" json:"type"` //type=1: multiple choice 	type=2: short answer
+	QuizID    int          `db:"quiz_id" json:"-"`
+	QType     QuestionType `db:"type" json:"type"`
 	Statement string       `json:"statement"`
 	Option1   string       `json:"option1,omitempty"`
 	Option2   string       `json:"option2,omitempty"`
@@ -60,8 +60,8 @@ type NewQuiz struct {
 }
 
 type QuizParticipation struct {
-	Id       int
-	QuizId   int `db:"quiz_id"`
+	ID       int
+	QuizID   int `db:"quiz_id"`
 	Username string
 	Result   string
 	Score    float64
@@ -124,7 +124,7 @@ func (a AnswerResult) Mark(g Grading) float64 {
 	return 0
 }
 
-func (q Question) check(userAnswer string) AnswerResult {
+func (q *Question) check(userAnswer string) AnswerResult {
 	uAns := strings.TrimSpace(userAnswer)
 	ans := strings.TrimSpace(q.Answer)
 
@@ -142,7 +142,7 @@ func (q Question) check(userAnswer string) AnswerResult {
 	}
 }
 
-func (q Question) validate() error {
+func (q *Question) validate() error {
 	if len(q.Statement) == 0 {
 		return ErrorMissingField("Statement")
 	}
@@ -229,18 +229,18 @@ func (q *NewQuiz) validate() (Quiz, error) {
 	return quiz, nil
 }
 
-func (p QuizParticipation) addToDB() error {
+func (p *QuizParticipation) addToDB() error {
 	db := db.DB
-	if _, err := db.Query("INSERT INTO quiz_participation (quiz_id, username, result) VALUES($1, $2, $3)", p.QuizId, p.Username, p.Result); err != nil {
+	if _, err := db.Query("INSERT INTO quiz_participation (quiz_id, username, result) VALUES($1, $2, $3)", p.QuizID, p.Username, p.Result); err != nil {
 		log.Println(err)
 		return errors.New(fmt.Sprintf("Result not saved. (%s)", err))
 	}
 	return nil
 }
 
-func (q Question) addToDB() error {
+func (q *Question) addToDB() error {
 	db := db.DB
-	if _, err := db.Query("INSERT INTO question (quiz_id, type, statement, option1, option2, option3, option4, answer) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", q.QuizId, q.QType, q.Statement, q.Option1, q.Option2, q.Option3, q.Option4, q.Answer); err != nil {
+	if _, err := db.Query("INSERT INTO question (quiz_id, type, statement, option1, option2, option3, option4, answer) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", q.QuizID, q.QType, q.Statement, q.Option1, q.Option2, q.Option3, q.Option4, q.Answer); err != nil {
 		log.Println(err)
 		return errors.New(fmt.Sprintf("Question not created. (%s)", err))
 	}
@@ -258,7 +258,7 @@ func (q *Quiz) addToDB() (int, error) {
 	}
 
 	for _, question := range q.Questions {
-		question.QuizId = quizId
+		question.QuizID = quizId
 		err := question.addToDB()
 		if err != nil {
 			return quizId, nil
@@ -362,7 +362,7 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var r Question
-		err = rows.Scan(&r.Id, &r.QuizId, &r.QType, &r.Statement, &r.Option1, &r.Option2, &r.Option3, &r.Option4, &r.Answer)
+		err = rows.Scan(&r.Id, &r.QuizID, &r.QType, &r.Statement, &r.Option1, &r.Option2, &r.Option3, &r.Option4, &r.Answer)
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -426,7 +426,7 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		participation := QuizParticipation{
-			QuizId:   quizID,
+			QuizID:   quizID,
 			Username: username,
 			Score:    mark / totalScore * 100}
 
