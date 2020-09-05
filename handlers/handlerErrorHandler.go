@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/lib/pq"
 )
 
 type RootHandler func(http.ResponseWriter, *http.Request) error
@@ -12,6 +14,41 @@ type RootHandler func(http.ResponseWriter, *http.Request) error
 func (fn RootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err := fn(w, r)
 	if err == nil {
+		return
+	}
+	log.Printf("An error accured: %v %T", err, err)
+
+	httpError, ok := err.(*HTTPError)
+	if !ok {
+		log.Println("Not http error")
+		w.WriteHeader(500)
+		return
+	}
+
+	switch httpError.Type {
+	case ClientError:
+		pqErr, ok := httpError.Cause.(*pq.Error)
+		if ok {
+			httpError.Detail = pqErr.Detail
+		}
+		log.Println("client error")
+		body, err := httpError.ResponseBody()
+		if err != nil {
+			log.Printf("An error accured: %v", err)
+			w.WriteHeader(500)
+		}
+		status, headers := httpError.ResponseHeaders()
+		for k, v := range headers {
+			w.Header().Set(k, v)
+		}
+		w.WriteHeader(status)
+		w.Write(body)
+		return
+	case ServerError:
+		log.Println("server error")
+		pqErr := err.(*pq.Error)
+		log.Println(pqErr.Code)
+		w.WriteHeader(500)
 		return
 	}
 
@@ -39,12 +76,12 @@ const (
 
 type HTTPError struct {
 	Type   ErrorType
-	Cause  error
-	Detail string
-	Status int
+	Cause  error  `json:"-"`
+	Detail string `json:"detail"`
+	Status int    `json:"-"`
 }
 
-func (e *HTTPError) Error() string {
+func (e HTTPError) Error() string {
 	return e.Detail + ": " + e.Cause.Error()
 }
 

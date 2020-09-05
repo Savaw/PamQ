@@ -22,12 +22,13 @@ func SignupPostHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if err := newUser.validate(); err != nil {
-		return NewClientError(err, http.StatusBadRequest, "Invalid form data")
+		return NewClientError(err, http.StatusBadRequest, fmt.Sprintf("Invalid form data: %s", err.Error()))
 	}
 
 	var user *User
 	var err error
 	if user, err = newUser.createUser(); err != nil {
+
 		return NewServerError(err, 500, "Create user error")
 	}
 

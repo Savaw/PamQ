@@ -140,7 +140,7 @@ func (q *Question) check(userAnswer string) AnswerResult {
 
 func (q *Question) validate() error {
 	if len(q.Statement) == 0 {
-		return ErrorMissingField("Statement")
+		return ErrorMissingField("Question statement")
 	}
 	if q.QType == 1 {
 		if len(q.Option1) == 0 {

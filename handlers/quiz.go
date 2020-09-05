@@ -5,6 +5,7 @@ import (
 	"PamQ/sessions"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 )
@@ -22,7 +23,7 @@ func CreateQuizHandler(w http.ResponseWriter, r *http.Request) error {
 
 	quiz, err := newQuiz.validate()
 	if err != nil {
-		return NewClientError(err, http.StatusBadRequest, "Invalid form data")
+		return NewClientError(err, http.StatusBadRequest, fmt.Sprintf("Invalid form data: %s", err.Error()))
 	}
 
 	var ok bool
