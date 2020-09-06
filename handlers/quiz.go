@@ -78,6 +78,20 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) error {
 		}
 		quiz.Questions = append(quiz.Questions, r)
 	}
+	loggedIn := sessions.IsLoggedIn(r)
+	availableParticipation := quiz.AllowedParticipations
+	if loggedIn {
+		// quiz.AllowedParticipations
+		rows, err := db.Query(`SELECT * FROM quiz_participation WHERE quiz_id=$1 AND username=$2`, quizID, sessions.GetUsername(r))
+		if err != nil {
+			return NewServerError(err, 500, "Error fetching data from database")
+		}
+		count := 0
+		for rows.Next() {
+			count++
+		}
+		availableParticipation -= count
+	}
 
 	if r.Method == http.MethodGet {
 		for i := range quiz.Questions {
@@ -87,7 +101,12 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) error {
 		quiz.FailText = ""
 		quiz.NotFailText = ""
 
-		js, err := json.Marshal(&quiz)
+		comb := struct {
+			Quiz
+			AvailableParicipation int `json:"available_participation"`
+		}{quiz, availableParticipation}
+
+		js, err := json.Marshal(comb)
 		if err != nil {
 			return NewServerError(err, 500, "Error while parsing response body")
 		}
@@ -98,7 +117,7 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if r.Method == http.MethodPost {
-		if !sessions.IsLoggedIn(r) {
+		if !loggedIn {
 			return NewClientError(nil, http.StatusUnauthorized, "Please login first")
 		}
 
@@ -108,6 +127,9 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) error {
 			return NewClientError(err, 400, "Bad request : invalid JSON.")
 		}
 
+		if availableParticipation <= 0 {
+			return NewClientError(nil, http.StatusBadRequest, "Your participation limit for this quiz has been reached")
+		}
 		mark := 0.0
 		totalScore := 0.0
 		stats := [4]int{0, 0, 0, 0}

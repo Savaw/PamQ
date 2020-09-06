@@ -75,13 +75,16 @@ const (
 )
 
 type HTTPError struct {
-	Type   ErrorType
-	Cause  error  `json:"-"`
-	Detail string `json:"detail"`
-	Status int    `json:"-"`
+	Type   ErrorType `json:"-"`
+	Cause  error     `json:"-"`
+	Detail string    `json:"detail"`
+	Status int       `json:"-"`
 }
 
 func (e HTTPError) Error() string {
+	if e.Cause == nil {
+		return e.Detail
+	}
 	return e.Detail + ": " + e.Cause.Error()
 }
 
