@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"unicode"
 
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
@@ -25,9 +26,26 @@ type NewUser struct {
 	PasswordConfirm string `json:"password_confirm"`
 }
 
+func validatePassword(password string) bool {
+	digit := false
+	letter := false
+	for _, c := range password {
+		if unicode.IsDigit(c) {
+			digit = true
+		}
+		if unicode.IsLetter(c) {
+			letter = true
+		}
+	}
+	if len(password) < 8 || !digit || !letter {
+		return false
+	}
+	return true
+}
+
 func (u *NewUser) validate() error {
-	if len(u.Username) == 0 {
-		return ErrorMissingField("Username")
+	if matched, err := regexp.Match(`^[A-Za-z]+[A-Za-z0-9]*(?:[_.][A-Za-z0-9]+)*$`, []byte(u.Username)); err != nil || matched == false || len(u.Username) < 3 || len(u.Username) > 30 {
+		return errors.New("Please enter a valid username.")
 	}
 	if len(u.Email) == 0 {
 		return ErrorMissingField("Email")
@@ -35,8 +53,8 @@ func (u *NewUser) validate() error {
 	if matched, err := regexp.Match(`[\w.]+@\w+\.\w+`, []byte(u.Email)); err != nil || matched == false {
 		return errors.New("Please enter a valid email.")
 	}
-	if len(u.Password) == 0 {
-		return ErrorMissingField("Password")
+	if !validatePassword(u.Password) {
+		return errors.New("Please enter a valid password. (at least 8 characters, one digit and one letter")
 	}
 	if u.Password != u.PasswordConfirm {
 		return errors.New("Passwords don't match.")

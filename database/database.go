@@ -16,7 +16,7 @@ const (
 	DB_NAME = "go_db_test"
 )
 
-func InitDB() {
+func init() {
 	dbinfo := fmt.Sprintf("user=%s dbname=%s sslmode=disable", DB_USER, DB_NAME)
 
 	var err error

@@ -10,7 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func SignupPostHandler(w http.ResponseWriter, r *http.Request) error {
+func SignupHandler(w http.ResponseWriter, r *http.Request) error {
 	if sessions.IsLoggedIn(r) {
 		return NewClientError(nil, http.StatusForbidden, "Logout in order to signup.")
 	}
@@ -43,7 +43,7 @@ func SignupPostHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func LoginPostHandler(w http.ResponseWriter, r *http.Request) error {
+func LoginHandler(w http.ResponseWriter, r *http.Request) error {
 	decoder := json.NewDecoder(r.Body)
 	var userCred NewUser
 	if err := decoder.Decode(&userCred); err != nil {
@@ -73,7 +73,7 @@ func LoginPostHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func LogoutPostHandler(w http.ResponseWriter, r *http.Request) error {
+func LogoutHandler(w http.ResponseWriter, r *http.Request) error {
 	if err := sessions.Logout(w, r); err != nil {
 		return NewServerError(err, 500, "Sessions logout error")
 	}

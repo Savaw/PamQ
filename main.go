@@ -1,8 +1,6 @@
 package main
 
 import (
-	db "PamQ/database"
-
 	"PamQ/handlers"
 	"log"
 	"net/http"
@@ -16,14 +14,13 @@ func main() {
 }
 
 func startServer() {
-	db.InitDB()
+	// db.InitDB()
 	r := mux.NewRouter()
-	r.HandleFunc("/", handlers.HomeHandler)
 
 	api := r.PathPrefix("/api").Subrouter()
-	api.Handle("/signup", handlers.RootHandler(handlers.SignupPostHandler)).Methods(http.MethodPost)
-	api.Handle("/login", handlers.RootHandler(handlers.LoginPostHandler)).Methods(http.MethodPost)
-	api.Handle("/logout", handlers.RootHandler(handlers.LogoutPostHandler)).Methods(http.MethodPost)
+	api.Handle("/signup", handlers.RootHandler(handlers.SignupHandler)).Methods(http.MethodPost)
+	api.Handle("/login", handlers.RootHandler(handlers.LoginHandler)).Methods(http.MethodPost)
+	api.Handle("/logout", handlers.RootHandler(handlers.LogoutHandler)).Methods(http.MethodPost)
 
 	quiz := api.PathPrefix("/quiz").Subrouter()
 	quiz.Handle("/create", handlers.RootHandler(handlers.CreateQuizHandler)).Methods(http.MethodPost)
