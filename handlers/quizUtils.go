@@ -57,11 +57,11 @@ type NewQuiz struct {
 
 type QuizParticipation struct {
 	ID       int
-	QuizID   int `db:"quiz_id"`
-	Username string
-	Result   string
-	Score    float64
-	PassFail bool `db:"pass_fail"`
+	QuizID   int     `db:"quiz_id"`
+	Username string  `db:"username"`
+	Result   string  `db:"result"`
+	Score    float64 `db:"score"`
+	PassFail bool    `db:"pass_fail"`
 }
 
 // type UserAnswer struct {
@@ -227,7 +227,7 @@ func (q *NewQuiz) validate() (Quiz, error) {
 
 func (p *QuizParticipation) addToDB() error {
 	db := db.DB
-	if _, err := db.Query("INSERT INTO quiz_participation (quiz_id, username, result) VALUES($1, $2, $3)", p.QuizID, p.Username, p.Result); err != nil {
+	if _, err := db.Query("INSERT INTO quiz_participation (quiz_id, username, result, score, pass_fail) VALUES($1, $2, $3, $4, $5)", p.QuizID, p.Username, p.Result, p.Score, p.PassFail); err != nil {
 		return NewServerError(err, 500, "Quiz participation not saved in database")
 	}
 	return nil

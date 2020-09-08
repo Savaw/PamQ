@@ -11,8 +11,8 @@ import (
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	username := sessions.GetUsername(r)
-	if username == nil {
+	username, ok := sessions.GetUsername(r)
+	if !ok {
 		returnMessageAsJson(w, "Welcome! Please login.")
 		return
 	}

@@ -36,10 +36,15 @@ func Logout(w http.ResponseWriter, r *http.Request) error {
 	return err
 }
 
-func GetUsername(r *http.Request) interface{} {
+func GetUsername(r *http.Request) (string, bool) {
 	session, _ := Store.Get(r, "session")
 	if session.Values["loggedin"] == true {
-		return session.Values["username"]
+		val := session.Values["username"]
+		username, ok := val.(string)
+		if !ok {
+			return "", false
+		}
+		return username, true
 	}
-	return nil
+	return "", false
 }

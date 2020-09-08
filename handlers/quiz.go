@@ -27,7 +27,7 @@ func CreateQuizHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	var ok bool
-	quiz.Creator, ok = sessions.GetUsername(r).(string)
+	quiz.Creator, ok = sessions.GetUsername(r)
 	if !ok {
 		return NewServerError(nil, 500, "Error getting username from session")
 	}
@@ -82,7 +82,11 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) error {
 	availableParticipation := quiz.AllowedParticipations
 	if loggedIn {
 		// quiz.AllowedParticipations
-		rows, err := db.Query(`SELECT * FROM quiz_participation WHERE quiz_id=$1 AND username=$2`, quizID, sessions.GetUsername(r))
+		username, ok := sessions.GetUsername(r)
+		if !ok {
+			return NewServerError(nil, 500, "Error getting username from session")
+		}
+		rows, err := db.Query(`SELECT * FROM quiz_participation WHERE quiz_id=$1 AND username=$2`, quizID, username)
 		if err != nil {
 			return NewServerError(err, 500, "Error fetching data from database")
 		}
@@ -143,7 +147,7 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) error {
 			}
 		}
 
-		username, ok := sessions.GetUsername(r).(string)
+		username, ok := sessions.GetUsername(r)
 		if !ok {
 			return NewServerError(nil, 500, "Error getting username from session")
 		}
@@ -215,6 +219,49 @@ func ListOfQuizesHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	mp := map[string]interface{}{"quizes": quizes}
+	js, err := json.Marshal(mp)
+	if err != nil {
+		return NewServerError(err, 500, "Error while parsing response body")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(js)
+	return nil
+}
+
+func QuizResultsHandler(w http.ResponseWriter, r *http.Request) error {
+	if !sessions.IsLoggedIn(r) {
+		return NewClientError(nil, http.StatusUnauthorized, "Please login first")
+	}
+
+	username, ok := sessions.GetUsername(r)
+	if !ok {
+		return NewServerError(nil, 500, "Error getting username from sessions")
+	}
+
+	db := db.DB
+	rows, err := db.Query(`SELECT * FROM quiz_participation WHERE username=$1`, username)
+	if err != nil {
+		return NewServerError(err, 500, "Error fetching data from database")
+	}
+	var listOfTakenQuiz []QuizParticipation
+	for rows.Next() {
+		var qp QuizParticipation
+		var score sql.NullFloat64
+		var passFail sql.NullBool
+		err := rows.Scan(&qp.ID, &qp.QuizID, &qp.Username, &qp.Result, &score, &passFail)
+		if score.Valid {
+			qp.Score = score.Float64
+		}
+		if passFail.Valid {
+			qp.PassFail = passFail.Bool
+		}
+		if err != nil {
+			return NewServerError(err, 500, "Error fetching data from database")
+		}
+		listOfTakenQuiz = append(listOfTakenQuiz, qp)
+	}
+
+	mp := map[string]interface{}{"participations": listOfTakenQuiz}
 	js, err := json.Marshal(mp)
 	if err != nil {
 		return NewServerError(err, 500, "Error while parsing response body")
