@@ -1,7 +1,8 @@
 CREATE TABLE userinfo (
     username    VARCHAR(50) PRIMARY KEY,
     email       VARCHAR(200) UNIQUE,
-    password    VARCHAR(200)
+    password    VARCHAR(200),
+    date_created TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE TABLE quiz (
@@ -13,7 +14,8 @@ CREATE TABLE quiz (
     passing_score   INT,
     not_fail_text   VARCHAR(500),
     fail_text       VARCHAR(500),
-    allowed_participations INT NOT NULL
+    allowed_participations INT NOT NULL,
+    date_created    TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE TABLE quiz_participation (
@@ -22,7 +24,8 @@ CREATE TABLE quiz_participation (
     username    VARCHAR(50) NOT NULL REFERENCES userinfo ON DELETE CASCADE,
     result      VARCHAR(500),
     score       FLOAT,
-    pass_fail   BOOLEAN
+    pass_fail   BOOLEAN,
+    date_created TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE TABLE question (

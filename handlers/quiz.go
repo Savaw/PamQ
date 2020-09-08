@@ -56,7 +56,7 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) error {
 	var quiz Quiz
 
 	db := db.DB
-	err = db.QueryRow(`SELECT * FROM quiz WHERE id=$1`, quizID).Scan(&quiz.Id, &quiz.Creator, &quiz.Name, &quiz.GradingType, &quiz.PassFail, &quiz.PassingScore, &quiz.NotFailText, &quiz.FailText, &quiz.AllowedParticipations)
+	err = db.QueryRow(`SELECT * FROM quiz WHERE id=$1`, quizID).Scan(&quiz.Id, &quiz.Creator, &quiz.Name, &quiz.GradingType, &quiz.PassFail, &quiz.PassingScore, &quiz.NotFailText, &quiz.FailText, &quiz.AllowedParticipations, &quiz.DateCreated)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -71,12 +71,12 @@ func QuizHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	for rows.Next() {
-		var r Question
-		err = rows.Scan(&r.Id, &r.QuizID, &r.QType, &r.Statement, &r.Option1, &r.Option2, &r.Option3, &r.Option4, &r.Answer)
+		var q Question
+		err = rows.Scan(&q.Id, &q.QuizID, &q.QType, &q.Statement, &q.Option1, &q.Option2, &q.Option3, &q.Option4, &q.Answer)
 		if err != nil {
 			return NewServerError(err, 500, "Error fetching data from database")
 		}
-		quiz.Questions = append(quiz.Questions, r)
+		quiz.Questions = append(quiz.Questions, q)
 	}
 	loggedIn := sessions.IsLoggedIn(r)
 	availableParticipation := quiz.AllowedParticipations
@@ -197,7 +197,7 @@ func ListOfQuizesHandler(w http.ResponseWriter, r *http.Request) error {
 	var rows *sql.Rows
 	var err error
 
-	dbQuery := `SELECT id, creator, name, grading_type, pass_fail, passing_score, allowed_participations FROM quiz`
+	dbQuery := `SELECT id, creator, name, grading_type, pass_fail, passing_score, allowed_participations, date_created FROM quiz`
 	if len(username) != 0 {
 		rows, err = db.Query(dbQuery+` WHERE creator=$1`, username)
 	} else {
@@ -211,7 +211,7 @@ func ListOfQuizesHandler(w http.ResponseWriter, r *http.Request) error {
 
 	for rows.Next() {
 		var quiz Quiz
-		err = rows.Scan(&quiz.Id, &quiz.Creator, &quiz.Name, &quiz.GradingType, &quiz.PassFail, &quiz.PassingScore, &quiz.AllowedParticipations)
+		err = rows.Scan(&quiz.Id, &quiz.Creator, &quiz.Name, &quiz.GradingType, &quiz.PassFail, &quiz.PassingScore, &quiz.AllowedParticipations, &quiz.DateCreated)
 		if err != nil {
 			return NewServerError(err, 500, "Error fetching data from database")
 		}
@@ -248,7 +248,7 @@ func QuizResultsHandler(w http.ResponseWriter, r *http.Request) error {
 		var qp QuizParticipation
 		var score sql.NullFloat64
 		var passFail sql.NullBool
-		err := rows.Scan(&qp.ID, &qp.QuizID, &qp.Username, &qp.Result, &score, &passFail)
+		err := rows.Scan(&qp.ID, &qp.QuizID, &qp.Username, &qp.Result, &score, &passFail, &qp.DateCreated)
 		if score.Valid {
 			qp.Score = score.Float64
 		}

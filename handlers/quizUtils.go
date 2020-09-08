@@ -42,10 +42,11 @@ type Quiz struct {
 	NotFailText           string     `json:"not_fail_text" db:"not_fail_text"`
 	FailText              string     `json:"fail_text" db:"fail_text"`
 	AllowedParticipations int        `json:"allowed_participation" db:"allowed_participation"`
+	DateCreated           JSONTime   `json:"date_created" db:"date_created"`
 }
 
 type NewQuiz struct {
-	Name                  string        `db,json:"name"`
+	Name                  string        `json:"name" db:"name"`
 	NewQuestions          []interface{} `json:"questions"`
 	GradingType           Grading       `json:"grading_type" db:"grading_type"`
 	PassFail              bool          `json:"pass_fail" db:"pass_fail"`
@@ -56,12 +57,13 @@ type NewQuiz struct {
 }
 
 type QuizParticipation struct {
-	ID       int
-	QuizID   int     `db:"quiz_id"`
-	Username string  `db:"username"`
-	Result   string  `db:"result"`
-	Score    float64 `db:"score"`
-	PassFail bool    `db:"pass_fail"`
+	ID          int
+	QuizID      int      `json:"quiz_id" db:"quiz_id"`
+	Username    string   `json:"username" db:"username"`
+	Result      string   `json:"result" db:"result"`
+	Score       float64  `json:"score" db:"score"`
+	PassFail    bool     `json:"pass_fail" db:"pass_fail"`
+	DateCreated JSONTime `json:"date_created" db:"date_created"`
 }
 
 // type UserAnswer struct {
@@ -172,7 +174,7 @@ func (q *NewQuiz) validate() (Quiz, error) {
 	}
 
 	if q.GradingType < 1 || q.GradingType > 2 {
-		return quiz, errors.New("Please enter a valid type for Grading Type. (1 or 2)")
+		return quiz, errors.New("Please enter a valid type for Grading Type. (1 if you wrong answers don't have negetive score or 2 otherwise)")
 	}
 
 	if q.AllowedParticipations == 0 {
@@ -189,7 +191,7 @@ func (q *NewQuiz) validate() (Quiz, error) {
 	for _, value := range q.NewQuestions {
 		qu := value.(map[string]interface{})
 
-		qTypeError := errors.New("Please enter a valid type for question. (1 or 2)")
+		qTypeError := errors.New("Please enter a valid type for question. (1 for multichoice question or 2 for short answer)")
 
 		t, ok := qu["type"].(float64)
 		var questionType int

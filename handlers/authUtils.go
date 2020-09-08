@@ -12,9 +12,10 @@ import (
 )
 
 type User struct {
-	Username       string `db:"username"`
-	Email          string `db:"email"`
-	HashedPassword string `db:"password"`
+	Username       string   `db:"username"`
+	Email          string   `db:"email"`
+	HashedPassword string   `db:"password"`
+	DateCreated    JSONTime `json:"date_created" db:"date_created"`
 }
 
 type NewUser struct {
