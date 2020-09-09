@@ -54,7 +54,7 @@ func (u *NewUser) validate() error {
 		return errors.New("Please enter a valid email.")
 	}
 	if !validatePassword(u.Password) {
-		return errors.New("Please enter a valid password. (at least 8 characters, one digit and one letter")
+		return errors.New("Please enter a valid password. (at least 8 characters, one digit and one letter)")
 	}
 	if u.Password != u.PasswordConfirm {
 		return errors.New("Passwords don't match.")

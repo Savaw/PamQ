@@ -1,0 +1,315 @@
+{
+	"info": {
+		"_postman_id": "b9e97467-bf6a-44f1-a364-b813894a46de",
+		"name": "PamQ",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "signup",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "",
+						"value": "",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\": \"savaw33\",\n    \"password\": \"s1234567\",\n    \"password_confirm\": \"s1234567\",\n    \"email\": \"sav@w33.com\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{host}}/api/signup",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"signup"
+					]
+				},
+				"description": "required fields: username, email, password, password_confirm"
+			},
+			"response": []
+		},
+		{
+			"name": "login",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\": \"savaw\",\n    \"password\": \"s1234567\"\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{host}}/api/login",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"login"
+					]
+				},
+				"description": "required fields: username, password\nreturn username"
+			},
+			"response": []
+		},
+		{
+			"name": "logout",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{host}}/api/logout",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"logout"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "create quiz",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"A beautiful quiz for you\",\n    \"questions\": [\n        {\n            \"type\": 2,\n            \"statement\": \"Are you happy?\",\n            \"answer\": \"maybe\"\n        },\n        {\n            \"type\": 1,\n            \"statement\": \"How many legs do spider has?\",\n            \"option1\": \"2\",\n            \"option2\": \"100\",\n            \"option3\": \"10\",\n            \"option4\": \"8\",\n            \"answer\": \"4\"\n        }\n    ],\n    \"grading_type\": 1,\n    \"pass_fail\": true,\n    \"passing_score\": 70,\n    \"not_fail_text\": \"You passed!\",\n    \"fail_text\": \"You failed. :(\",\n    \"allowed_participation\": 5\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{host}}/api/quiz/create",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"quiz",
+						"create"
+					]
+				},
+				"description": "required fields: name, questions (array), gradint_type, allowed_participation\n\\\nadditional fields: pass_fail, passing_score, not_fail_text, fail_text\n\\\nrequired fields for each question: statement, type, option1 and option2 if type == 2\nadditional fields for each question: answer, option3, option4\n\\\n\\\n`grading_type` can be 1 or 2. 1 if the test does not have any negetive points and 2 other wise\n\n`pass_fail` is a boolean that indicates whether the quiz is a pass/fail quiz or not. If true please provide passing_score with a score from 0 to 100 as the passing score.\n\n`not_fail_text` will be send to user if the quiz is not pass/fail quiz or if the user pass the quiz.\n\n`fail_text` will be send to user if the quiz is pass/fail and user fail.\n\n`type` in question can be 1 or 2. Type 1 is multiple choice question and need options. also answer must be a number that indicates the correct option. Type 2 is short answer."
+			},
+			"response": []
+		},
+		{
+			"name": "get a quiz",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {},
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Connection",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8080/api/quiz/2",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"quiz",
+						"2"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get list of quizes",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {},
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Connection",
+						"value": "",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8080/api/quiz/all?createdby=savaw",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"quiz",
+						"all"
+					],
+					"query": [
+						{
+							"key": "createdby",
+							"value": "savaw"
+						}
+					]
+				},
+				"description": "with out createdby param it will give all the available quizes"
+			},
+			"response": []
+		},
+		{
+			"name": "answer a quiz",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {}
+			},
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Connection",
+						"type": "text",
+						"value": "",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"112\": \"yes\",\n    \"113\": \"4\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8080/api/quiz/2",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"quiz",
+						"2"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get result of participated quizes",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8080/api/quiz/results",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"quiz",
+						"results"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "44718adb-cce6-4302-8703-eb8fc3d3c3fa",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "c379b540-8ff6-4658-bbdc-62870e00d7c6",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"id": "ec9167b6-6ac8-4a63-bd0c-30f2246f13b9",
+			"key": "host",
+			"value": "localhost:8080"
+		}
+	],
+	"protocolProfileBehavior": {}
+}
